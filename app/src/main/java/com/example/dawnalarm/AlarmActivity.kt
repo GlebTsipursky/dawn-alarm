@@ -171,6 +171,8 @@ class AlarmActivity : ComponentActivity() {
                     .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                     .build()
             )
+            // Keeps the processor awake while the sound plays, so it continues with the screen locked.
+            setWakeMode(applicationContext, android.os.PowerManager.PARTIAL_WAKE_LOCK)
             setDataSource(this@AlarmActivity, uri)
             isLooping = true
             prepare()

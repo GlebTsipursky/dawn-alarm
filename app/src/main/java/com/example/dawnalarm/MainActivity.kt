@@ -58,6 +58,19 @@ class MainActivity : ComponentActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1)
         }
+        // Android 14 and later: the full-screen alarm screen needs permission. Without it, the alarm
+        // shows only as a small notification while the phone is locked, so ask for it.
+        if (Build.VERSION.SDK_INT >= 34) {
+            val nm = getSystemService(android.app.NotificationManager::class.java)
+            if (!nm.canUseFullScreenIntent()) {
+                startActivity(
+                    Intent(
+                        Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT,
+                        android.net.Uri.parse("package:$packageName")
+                    )
+                )
+            }
+        }
         // Android 12 and later: if exact alarms are not allowed, open the settings page for it.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val am = getSystemService(AlarmManager::class.java)
@@ -105,6 +118,7 @@ fun AlarmApp() {
                 AlarmScheduler.cancel(context, target.id)
                 val updated = alarms.filter { it.id != target.id }
                 AlarmStore.save(context, updated)
+                AlarmScheduler.scheduleAll(context)
                 alarms = updated
                 showEditor = false
             },

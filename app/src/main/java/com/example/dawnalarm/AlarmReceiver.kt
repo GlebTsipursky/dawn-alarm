@@ -24,7 +24,7 @@ class AlarmReceiver : BroadcastReceiver() {
             // One-time alarms switch off after ringing. Repeating alarms schedule their next ring.
             val updated = alarms.map { if (it.id == id && it.days.isEmpty()) it.copy(enabled = false) else it }
             AlarmStore.save(context, updated)
-            AlarmScheduler.schedule(context, updated.first { it.id == id })
+            AlarmScheduler.scheduleAll(context)
         }
 
         showNotification(context, alarm, phase)

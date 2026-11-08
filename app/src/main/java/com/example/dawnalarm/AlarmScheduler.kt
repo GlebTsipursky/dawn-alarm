@@ -18,19 +18,49 @@ object AlarmScheduler {
     const val PHASE_RING = "ring"
     const val PHASE_SNOOZE = "snooze"
 
+    /**
+     * Rebuilds the whole schedule from the saved alarms. Android keeps only one "alarm clock"
+     * slot per app, so the soonest ring uses that slot (it wakes the phone even in deep sleep),
+     * and the other rings use exact alarms.
+     */
     fun scheduleAll(context: Context) {
-        AlarmStore.load(context).forEach { schedule(context, it) }
+        val alarms = AlarmStore.load(context)
+        alarms.forEach { cancel(context, it.id) }
+        val rings = alarms
+            .mapNotNull { alarm -> alarm.nextTrigger()?.let { alarm to it } }
+            .sortedBy { it.second }
+        rings.forEachIndexed { index, (alarm, ringAt) ->
+            if (alarm.sunriseMinutes > 0) {
+                val sunriseAt = ringAt.minusMinutes(alarm.sunriseMinutes.toLong())
+                setExact(context, sunriseAt.toInstant().toEpochMilli(), alarm.id, PHASE_SUNRISE)
+            }
+            val ringMillis = ringAt.toInstant().toEpochMilli()
+            if (index == 0) {
+                setAlarmClock(context, ringMillis, alarm.id)
+            } else {
+                setExact(context, ringMillis, alarm.id, PHASE_RING)
+            }
+        }
     }
 
-    /** Replaces any existing schedule for this alarm with its next occurrence. */
-    fun schedule(context: Context, alarm: Alarm) {
-        cancel(context, alarm.id)
-        val ringAt = alarm.nextTrigger() ?: return
-        if (alarm.sunriseMinutes > 0) {
-            val sunriseAt = ringAt.minusMinutes(alarm.sunriseMinutes.toLong())
-            setExact(context, sunriseAt.toInstant().toEpochMilli(), alarm.id, PHASE_SUNRISE)
-        }
-        setExact(context, ringAt.toInstant().toEpochMilli(), alarm.id, PHASE_RING)
+    /** Kept for callers that change one alarm; the whole schedule is rebuilt either way. */
+    fun schedule(context: Context, @Suppress("UNUSED_PARAMETER") alarm: Alarm) {
+        scheduleAll(context)
+    }
+
+    private fun setAlarmClock(context: Context, atMillis: Long, id: Int) {
+        val am = context.getSystemService(AlarmManager::class.java)
+        // Tapping the alarm icon in the status bar opens the app.
+        val showIntent = PendingIntent.getActivity(
+            context,
+            0,
+            Intent(context, MainActivity::class.java),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        am.setAlarmClock(
+            AlarmManager.AlarmClockInfo(atMillis, showIntent),
+            pendingIntent(context, id, PHASE_RING)
+        )
     }
 
     fun snooze(context: Context, id: Int, minutes: Int) {
