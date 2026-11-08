@@ -16,7 +16,7 @@ data class Alarm(
     val minute: Int,
     val enabled: Boolean = true,
     val days: Set<DayOfWeek> = emptySet(),
-    val sunriseMinutes: Int = 15,
+    val sunriseMinutes: Int = 30,
     val vibrate: Boolean = true,
 ) {
     /** The next time this alarm should ring after [now], or null if it is off. */

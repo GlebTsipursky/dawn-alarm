@@ -186,7 +186,7 @@ private fun AlarmEditor(
     var hour by remember { mutableIntStateOf(initial?.hour ?: 7) }
     var minute by remember { mutableIntStateOf(initial?.minute ?: 0) }
     var days by remember { mutableStateOf(initial?.days ?: emptySet()) }
-    var sunrise by remember { mutableFloatStateOf((initial?.sunriseMinutes ?: 15).toFloat()) }
+    var sunrise by remember { mutableFloatStateOf((initial?.sunriseMinutes ?: 30).toFloat()) }
     var vibrate by remember { mutableStateOf(initial?.vibrate ?: true) }
 
     Scaffold(

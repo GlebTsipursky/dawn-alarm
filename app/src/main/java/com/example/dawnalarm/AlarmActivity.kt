@@ -2,6 +2,8 @@ package com.example.dawnalarm
 
 import android.app.NotificationManager
 import android.content.Intent
+import android.hardware.camera2.CameraCharacteristics
+import android.hardware.camera2.CameraManager
 import android.media.AudioAttributes
 import android.media.MediaPlayer
 import android.media.RingtoneManager
@@ -47,6 +49,7 @@ class AlarmActivity : ComponentActivity() {
     private var rampTask: Runnable? = null
     private var player: MediaPlayer? = null
     private var vibrator: Vibrator? = null
+    private var torchCameraId: String? = null
     private var alarmId = -1
 
     private val progress = mutableFloatStateOf(0f)
@@ -130,6 +133,32 @@ class AlarmActivity : ComponentActivity() {
         ringing.value = true
         playSound()
         if (alarm.vibrate) vibrate()
+        startTorch()
+    }
+
+    /** Turns on the phone's flashlight (the back camera's light) and keeps it on until the alarm stops. */
+    private fun startTorch() {
+        try {
+            val cameraManager = getSystemService(CameraManager::class.java)
+            val cameraId = cameraManager.cameraIdList.firstOrNull { id ->
+                cameraManager.getCameraCharacteristics(id)
+                    .get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true
+            } ?: return
+            cameraManager.setTorchMode(cameraId, true)
+            torchCameraId = cameraId
+        } catch (e: Exception) {
+            // The phone has no flashlight, or another app is using the camera. The alarm still rings.
+        }
+    }
+
+    private fun stopTorch() {
+        val cameraId = torchCameraId ?: return
+        try {
+            getSystemService(CameraManager::class.java).setTorchMode(cameraId, false)
+        } catch (e: Exception) {
+            // Ignore: the flashlight may already be off.
+        }
+        torchCameraId = null
     }
 
     private fun playSound() {
@@ -172,6 +201,7 @@ class AlarmActivity : ComponentActivity() {
         player = null
         vibrator?.cancel()
         vibrator = null
+        stopTorch()
     }
 
     private fun dismiss() {
