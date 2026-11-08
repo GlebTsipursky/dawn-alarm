@@ -5,6 +5,7 @@ import android.content.Intent
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraManager
 import android.media.AudioAttributes
+import android.media.AudioManager
 import android.media.MediaPlayer
 import android.media.RingtoneManager
 import android.os.Build
@@ -50,6 +51,7 @@ class AlarmActivity : ComponentActivity() {
     private var player: MediaPlayer? = null
     private var vibrator: Vibrator? = null
     private var torchCameraId: String? = null
+    private var savedAlarmVolume: Int? = null
     private var alarmId = -1
 
     private val progress = mutableFloatStateOf(0f)
@@ -131,9 +133,33 @@ class AlarmActivity : ComponentActivity() {
         progress.floatValue = 1f
         setScreenBrightness(1f)
         ringing.value = true
+        raiseAlarmVolume()
         playSound()
         if (alarm.vibrate) vibrate()
         startTorch()
+    }
+
+    /**
+     * Sets the alarm volume to its maximum so the alarm is audible even if the phone's volume
+     * was turned down. The previous level is restored when the alarm stops.
+     */
+    private fun raiseAlarmVolume() {
+        val audio = getSystemService(AudioManager::class.java)
+        if (savedAlarmVolume == null) {
+            savedAlarmVolume = audio.getStreamVolume(AudioManager.STREAM_ALARM)
+        }
+        audio.setStreamVolume(
+            AudioManager.STREAM_ALARM,
+            audio.getStreamMaxVolume(AudioManager.STREAM_ALARM),
+            0
+        )
+    }
+
+    private fun restoreAlarmVolume() {
+        val previous = savedAlarmVolume ?: return
+        getSystemService(AudioManager::class.java)
+            .setStreamVolume(AudioManager.STREAM_ALARM, previous, 0)
+        savedAlarmVolume = null
     }
 
     /** Turns on the phone's flashlight (the back camera's light) and keeps it on until the alarm stops. */
@@ -204,6 +230,7 @@ class AlarmActivity : ComponentActivity() {
         vibrator?.cancel()
         vibrator = null
         stopTorch()
+        restoreAlarmVolume()
     }
 
     private fun dismiss() {

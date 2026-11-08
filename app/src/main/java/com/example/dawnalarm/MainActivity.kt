@@ -7,6 +7,11 @@ import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import android.app.NotificationManager
+import android.content.Context
+import android.os.PowerManager
+import androidx.core.app.NotificationManagerCompat
+import androidx.compose.foundation.lazy.item
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.clickable
@@ -51,42 +56,22 @@ import java.time.DayOfWeek
 
 class MainActivity : ComponentActivity() {
 
+    override fun onResume() {
+        super.onResume()
+        // Tells the checklist to re-read the permission states, for example after a settings page.
+        PermissionState.tick.intValue++
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        AlarmReceiver.createChannel(this)
 
         // Android 13 and later: ask permission to show alarm notifications.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1)
         }
-        // "Display over other apps": lets the alarm screen cover whatever app is open.
-        if (!Settings.canDrawOverlays(this)) {
-            startActivity(
-                Intent(
-                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                    android.net.Uri.parse("package:$packageName")
-                )
-            )
-        }
-        // Android 14 and later: the full-screen alarm screen needs permission. Without it, the alarm
-        // shows only as a small notification while the phone is locked, so ask for it.
-        if (Build.VERSION.SDK_INT >= 34) {
-            val nm = getSystemService(android.app.NotificationManager::class.java)
-            if (!nm.canUseFullScreenIntent()) {
-                startActivity(
-                    Intent(
-                        Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT,
-                        android.net.Uri.parse("package:$packageName")
-                    )
-                )
-            }
-        }
-        // Android 12 and later: if exact alarms are not allowed, open the settings page for it.
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val am = getSystemService(AlarmManager::class.java)
-            if (!am.canScheduleExactAlarms()) {
-                startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM))
-            }
-        }
+        // The remaining permissions are listed in the checklist on the main screen, where each
+        // one has an Open button. The app does not open settings pages on its own.
 
         AlarmScheduler.scheduleAll(this)
 
@@ -153,6 +138,7 @@ fun AlarmApp() {
                 }
             } else {
                 LazyColumn(modifier = Modifier.padding(padding)) {
+                    item { PermissionChecklist() }
                     items(alarms, key = { it.id }) { alarm ->
                         AlarmRow(
                             alarm = alarm,
@@ -173,6 +159,128 @@ fun AlarmApp() {
                 }
             }
         }
+    }
+}
+
+/** Changes each time the app comes to the front, so the checklist re-reads the permission states. */
+object PermissionState {
+    val tick = mutableIntStateOf(0)
+}
+
+private class PermissionCheck(
+    val label: String,
+    val explanation: String,
+    val granted: Boolean,
+    val open: () -> Unit,
+)
+
+/** Builds the list of settings that can stop an alarm from waking you, with each one's current state. */
+private fun permissionChecks(context: Context): List<PermissionCheck> {
+    val pkg = context.packageName
+    val uri = android.net.Uri.parse("package:$pkg")
+    fun open(intent: Intent): () -> Unit = {
+        context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    }
+    val nm = context.getSystemService(NotificationManager::class.java)
+    val checks = mutableListOf<PermissionCheck>()
+
+    checks += PermissionCheck(
+        label = "Notifications",
+        explanation = "Lets the alarm show on the lock screen.",
+        granted = NotificationManagerCompat.from(context).areNotificationsEnabled(),
+        open = open(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, pkg)),
+    )
+    val channel = nm.getNotificationChannel(AlarmReceiver.CHANNEL_ID)
+    checks += PermissionCheck(
+        label = "Alarm notification channel",
+        explanation = "Must not be turned off, or the alarm cannot open from a notification.",
+        granted = channel != null && channel.importance != NotificationManager.IMPORTANCE_NONE,
+        open = open(
+            Intent(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS)
+                .putExtra(Settings.EXTRA_APP_PACKAGE, pkg)
+                .putExtra(Settings.EXTRA_CHANNEL_ID, AlarmReceiver.CHANNEL_ID)
+        ),
+    )
+    checks += PermissionCheck(
+        label = "Do Not Disturb access",
+        explanation = "Lets the alarm break through Do Not Disturb mode.",
+        granted = nm.isNotificationPolicyAccessGranted,
+        open = open(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)),
+    )
+    checks += PermissionCheck(
+        label = "Display over other apps",
+        explanation = "Lets the alarm screen cover whatever app is open.",
+        granted = Settings.canDrawOverlays(context),
+        open = open(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, uri)),
+    )
+    if (Build.VERSION.SDK_INT >= 34) {
+        checks += PermissionCheck(
+            label = "Full-screen alarms",
+            explanation = "Lets the alarm screen open over the lock screen.",
+            granted = nm.canUseFullScreenIntent(),
+            open = open(Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT, uri)),
+        )
+    }
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        checks += PermissionCheck(
+            label = "Exact alarms",
+            explanation = "Lets alarms fire on the minute instead of a few minutes late.",
+            granted = context.getSystemService(AlarmManager::class.java).canScheduleExactAlarms(),
+            open = open(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, uri)),
+        )
+    }
+    checks += PermissionCheck(
+        label = "Battery: unrestricted",
+        explanation = "Stops Android from putting the app to sleep and delaying or dropping alarms.",
+        granted = context.getSystemService(PowerManager::class.java).isIgnoringBatteryOptimizations(pkg),
+        open = open(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, uri)),
+    )
+    return checks
+}
+
+@Composable
+private fun PermissionChecklist() {
+    val context = LocalContext.current
+    // Reading the tick makes this list update when the app returns to the front.
+    @Suppress("UNUSED_VARIABLE")
+    val refresh = PermissionState.tick.intValue
+    val checks = permissionChecks(context)
+    if (checks.all { it.granted }) return
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text("Alarm checklist", style = MaterialTheme.typography.titleMedium)
+        Text(
+            "Each item below can stop an alarm from waking you. Turn on every item that says it needs action.",
+            style = MaterialTheme.typography.bodySmall
+        )
+        checks.forEach { check ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = check.label + if (check.granted) " (on)" else " (needs action)",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Text(check.explanation, style = MaterialTheme.typography.bodySmall)
+                }
+                if (!check.granted) {
+                    OutlinedButton(onClick = check.open) { Text("Open") }
+                }
+            }
+        }
+        Text(
+            "Phone makers add their own sleep settings. On Samsung, Xiaomi, Oppo, Vivo, Huawei, and similar phones, " +
+                "also open the phone's battery or app settings for Dawn Alarm and set it to unrestricted or " +
+                "no restrictions, and turn on auto-start if the phone offers it.",
+            style = MaterialTheme.typography.bodySmall
+        )
     }
 }
 

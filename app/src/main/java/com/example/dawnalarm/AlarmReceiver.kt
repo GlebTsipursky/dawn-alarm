@@ -46,10 +46,8 @@ class AlarmReceiver : BroadcastReceiver() {
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
 
     private fun showNotification(context: Context, alarm: Alarm, phase: String) {
+        createChannel(context)
         val nm = context.getSystemService(NotificationManager::class.java)
-        nm.createNotificationChannel(
-            NotificationChannel(CHANNEL_ID, "Alarms", NotificationManager.IMPORTANCE_HIGH)
-        )
 
         val pendingActivity = PendingIntent.getActivity(
             context,
@@ -74,6 +72,23 @@ class AlarmReceiver : BroadcastReceiver() {
     }
 
     companion object {
-        private const val CHANNEL_ID = "alarms"
+        /**
+         * The alarm notification channel. The "_v2" suffix gives a fresh channel with the
+         * settings below, which Android does not change on channels that already exist.
+         */
+        const val CHANNEL_ID = "alarms_v2"
+
+        /** Creates the channel if needed. It may break through Do Not Disturb, and it is silent because the alarm screen makes the sound. */
+        fun createChannel(context: Context) {
+            val nm = context.getSystemService(NotificationManager::class.java)
+            if (nm.getNotificationChannel(CHANNEL_ID) != null) return
+            val channel = NotificationChannel(CHANNEL_ID, "Alarms", NotificationManager.IMPORTANCE_HIGH).apply {
+                setBypassDnd(true)
+                setSound(null, null)
+                enableVibration(false)
+                lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
+            }
+            nm.createNotificationChannel(channel)
+        }
     }
 }
