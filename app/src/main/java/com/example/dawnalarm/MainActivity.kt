@@ -173,6 +173,7 @@ private fun AlarmRow(alarm: Alarm, onClick: () -> Unit, onToggle: (Boolean) -> U
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AlarmEditor(
     initial: Alarm?,
