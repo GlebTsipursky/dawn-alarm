@@ -6,11 +6,14 @@ import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.provider.Settings
 import androidx.core.app.NotificationCompat
 
 /**
- * Runs when Android reaches a scheduled moment. It posts a full-screen notification,
- * which opens [AlarmActivity] even when the phone is locked.
+ * Runs when Android reaches a scheduled moment. It opens [AlarmActivity] directly when the
+ * app has the "Display over other apps" permission, so the alarm screen covers whatever app
+ * is open. It also posts a full-screen notification as a backup, which opens the alarm
+ * screen when the phone is locked.
  */
 class AlarmReceiver : BroadcastReceiver() {
 
@@ -28,7 +31,19 @@ class AlarmReceiver : BroadcastReceiver() {
         }
 
         showNotification(context, alarm, phase)
+
+        // With the overlay permission, Android allows this app to start the alarm screen
+        // directly, so it appears over other apps and not only as a notification.
+        if (Settings.canDrawOverlays(context)) {
+            context.startActivity(alarmScreenIntent(context, alarm, phase))
+        }
     }
+
+    private fun alarmScreenIntent(context: Context, alarm: Alarm, phase: String): Intent =
+        Intent(context, AlarmActivity::class.java)
+            .putExtra(AlarmScheduler.EXTRA_ALARM_ID, alarm.id)
+            .putExtra(AlarmScheduler.EXTRA_PHASE, phase)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
 
     private fun showNotification(context: Context, alarm: Alarm, phase: String) {
         val nm = context.getSystemService(NotificationManager::class.java)
@@ -36,14 +51,10 @@ class AlarmReceiver : BroadcastReceiver() {
             NotificationChannel(CHANNEL_ID, "Alarms", NotificationManager.IMPORTANCE_HIGH)
         )
 
-        val activityIntent = Intent(context, AlarmActivity::class.java)
-            .putExtra(AlarmScheduler.EXTRA_ALARM_ID, alarm.id)
-            .putExtra(AlarmScheduler.EXTRA_PHASE, phase)
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         val pendingActivity = PendingIntent.getActivity(
             context,
             alarm.id * 10 + 7,
-            activityIntent,
+            alarmScreenIntent(context, alarm, phase),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 

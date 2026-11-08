@@ -58,6 +58,15 @@ class MainActivity : ComponentActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1)
         }
+        // "Display over other apps": lets the alarm screen cover whatever app is open.
+        if (!Settings.canDrawOverlays(this)) {
+            startActivity(
+                Intent(
+                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    android.net.Uri.parse("package:$packageName")
+                )
+            )
+        }
         // Android 14 and later: the full-screen alarm screen needs permission. Without it, the alarm
         // shows only as a small notification while the phone is locked, so ask for it.
         if (Build.VERSION.SDK_INT >= 34) {
