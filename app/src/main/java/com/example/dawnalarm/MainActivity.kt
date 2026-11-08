@@ -11,7 +11,6 @@ import android.app.NotificationManager
 import android.content.Context
 import android.os.PowerManager
 import androidx.core.app.NotificationManagerCompat
-import androidx.compose.foundation.lazy.item
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.clickable
