@@ -164,7 +164,7 @@ private fun AlarmRow(alarm: Alarm, onClick: () -> Unit, onToggle: (Boolean) -> U
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = String.format("%02d:%02d", alarm.hour, alarm.minute),
+                text = formatTime(alarm.hour, alarm.minute),
                 style = MaterialTheme.typography.headlineMedium
             )
             Text(text = alarm.describe(), style = MaterialTheme.typography.bodyMedium)
@@ -205,7 +205,7 @@ private fun AlarmEditor(
                     minute = m
                 }, hour, minute, false).show()
             }) {
-                Text(String.format("Time: %02d:%02d", hour, minute))
+                Text("Time: " + formatTime(hour, minute))
             }
 
             Text("Repeat on (leave all off to ring once)")

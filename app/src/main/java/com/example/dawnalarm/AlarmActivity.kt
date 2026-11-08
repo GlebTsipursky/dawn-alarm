@@ -98,7 +98,7 @@ class AlarmActivity : ComponentActivity() {
             finish()
             return
         }
-        timeLabel.value = String.format("%02d:%02d", alarm.hour, alarm.minute)
+        timeLabel.value = formatTime(alarm.hour, alarm.minute)
         if (intent.getStringExtra(AlarmScheduler.EXTRA_PHASE) == AlarmScheduler.PHASE_SUNRISE &&
             alarm.sunriseMinutes > 0
         ) {

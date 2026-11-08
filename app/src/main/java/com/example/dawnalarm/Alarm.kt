@@ -6,6 +6,13 @@ import java.time.DayOfWeek
 import java.time.LocalTime
 import java.time.ZonedDateTime
 
+/** Formats a 24-hour time as a 12-hour time with AM or PM, for example 7:05 AM or 12:30 PM. */
+fun formatTime(hour: Int, minute: Int): String {
+    val displayHour = if (hour % 12 == 0) 12 else hour % 12
+    val suffix = if (hour < 12) "AM" else "PM"
+    return "%d:%02d %s".format(displayHour, minute, suffix)
+}
+
 /**
  * One alarm. An empty [days] set means the alarm rings once.
  * [sunriseMinutes] is how long before the alarm the screen starts brightening (0 turns this off).
