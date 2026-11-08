@@ -277,7 +277,9 @@ private fun PermissionChecklist() {
         Text(
             "Phone makers add their own sleep settings. On Samsung, Xiaomi, Oppo, Vivo, Huawei, and similar phones, " +
                 "also open the phone's battery or app settings for Dawn Alarm and set it to unrestricted or " +
-                "no restrictions, and turn on auto-start if the phone offers it.",
+                "no restrictions, and turn on auto-start if the phone offers it. On Samsung, also check " +
+                "Settings, Battery, Background usage limits, and make sure Dawn Alarm is not listed under " +
+                "Sleeping apps or Deep sleeping apps. Menu names vary by phone model.",
             style = MaterialTheme.typography.bodySmall
         )
     }

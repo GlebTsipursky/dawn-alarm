@@ -1,11 +1,13 @@
 package com.example.dawnalarm
 
+import android.app.ActivityOptions
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.provider.Settings
 import androidx.core.app.NotificationCompat
 
@@ -49,12 +51,19 @@ class AlarmReceiver : BroadcastReceiver() {
         createChannel(context)
         val nm = context.getSystemService(NotificationManager::class.java)
 
-        val pendingActivity = PendingIntent.getActivity(
-            context,
-            alarm.id * 10 + 7,
-            alarmScreenIntent(context, alarm, phase),
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
+        val screenIntent = alarmScreenIntent(context, alarm, phase)
+        val flags = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        // Android 15 and later require the app that creates this intent to allow the background
+        // launch. Without this opt-in, the alarm screen can be blocked when the phone is locked.
+        val pendingActivity = if (Build.VERSION.SDK_INT >= 34) {
+            val options = ActivityOptions.makeBasic()
+                .setPendingIntentCreatorBackgroundActivityStartMode(
+                    ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
+                )
+            PendingIntent.getActivity(context, alarm.id * 10 + 7, screenIntent, flags, options.toBundle())
+        } else {
+            PendingIntent.getActivity(context, alarm.id * 10 + 7, screenIntent, flags)
+        }
 
         val title = if (phase == AlarmScheduler.PHASE_SUNRISE) "Sunrise starting" else "Alarm"
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
