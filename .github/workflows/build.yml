@@ -21,7 +21,22 @@ jobs:
       - name: Make the Gradle wrapper executable
         run: chmod +x gradlew
 
+      - name: Restore the signing key (if the secrets exist)
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/dawn-alarm.jks"
+            echo "KEYSTORE_PATH=$RUNNER_TEMP/dawn-alarm.jks" >> "$GITHUB_ENV"
+            echo "Using the permanent signing key."
+          else
+            echo "No signing key secret found. Using the temporary debug key."
+          fi
+
       - name: Build the debug APK
+        env:
+          DAWN_STORE_PASSWORD: ${{ secrets.DAWN_STORE_PASSWORD }}
+          DAWN_KEY_PASSWORD: ${{ secrets.DAWN_KEY_PASSWORD }}
         run: ./gradlew assembleDebug --stacktrace
 
       - name: Upload the APK

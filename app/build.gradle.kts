@@ -16,9 +16,31 @@ android {
         versionName = "2.0"
     }
 
+    // Signing with a permanent key. The GitHub build sets KEYSTORE_PATH and the passwords only
+    // when the signing secrets exist. Without them, the build uses the temporary debug key.
+    val keystorePath: String? = System.getenv("KEYSTORE_PATH")
+    if (keystorePath != null) {
+        signingConfigs {
+            create("dawn") {
+                storeFile = file(keystorePath)
+                storePassword = System.getenv("DAWN_STORE_PASSWORD")
+                keyAlias = "dawnalarm"
+                keyPassword = System.getenv("DAWN_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
+        debug {
+            if (keystorePath != null) {
+                signingConfig = signingConfigs.getByName("dawn")
+            }
+        }
         release {
             isMinifyEnabled = false
+            if (keystorePath != null) {
+                signingConfig = signingConfigs.getByName("dawn")
+            }
         }
     }
 
