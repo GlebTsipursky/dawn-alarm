@@ -208,7 +208,9 @@ private fun permissionChecks(context: Context): List<PermissionCheck> {
     )
     checks += PermissionCheck(
         label = "Display over other apps",
-        explanation = "Lets the alarm screen cover whatever app is open.",
+        explanation = "Lets the alarm screen cover whatever app is open. If Android says the app was denied access, " +
+            "first open Settings, Apps, Dawn Alarm, tap the three dots at the top right, choose Allow restricted " +
+            "settings, confirm with your phone's lock code, then come back and tap Open again.",
         granted = Settings.canDrawOverlays(context),
         open = open(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, uri)),
     )
@@ -279,7 +281,8 @@ private fun PermissionChecklist() {
                 "also open the phone's battery or app settings for Dawn Alarm and set it to unrestricted or " +
                 "no restrictions, and turn on auto-start if the phone offers it. On Samsung, also check " +
                 "Settings, Battery, Background usage limits, and make sure Dawn Alarm is not listed under " +
-                "Sleeping apps or Deep sleeping apps. Menu names vary by phone model.",
+                "Sleeping apps or Deep sleeping apps. Menu names vary by phone model. If any other permission " +
+                "says the app was denied access, use the same Allow restricted settings step first.",
             style = MaterialTheme.typography.bodySmall
         )
     }
