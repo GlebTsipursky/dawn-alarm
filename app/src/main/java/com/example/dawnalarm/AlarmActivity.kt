@@ -189,20 +189,30 @@ class AlarmActivity : ComponentActivity() {
 
     private fun playSound() {
         player?.release()
+        player = null
+        // Some phones have no alarm sound set, so fall back to other sounds. If none works,
+        // the alarm still shows its screen and vibrates instead of closing.
         val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-        player = MediaPlayer().apply {
-            setAudioAttributes(
+            ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
+            ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+            ?: return
+        val mediaPlayer = MediaPlayer()
+        try {
+            mediaPlayer.setAudioAttributes(
                 AudioAttributes.Builder()
                     .setUsage(AudioAttributes.USAGE_ALARM)
                     .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                     .build()
             )
             // Keeps the processor awake while the sound plays, so it continues with the screen locked.
-            setWakeMode(applicationContext, android.os.PowerManager.PARTIAL_WAKE_LOCK)
-            setDataSource(this@AlarmActivity, uri)
-            isLooping = true
-            prepare()
-            start()
+            mediaPlayer.setWakeMode(applicationContext, android.os.PowerManager.PARTIAL_WAKE_LOCK)
+            mediaPlayer.setDataSource(this, uri)
+            mediaPlayer.isLooping = true
+            mediaPlayer.prepare()
+            mediaPlayer.start()
+            player = mediaPlayer
+        } catch (e: Exception) {
+            mediaPlayer.release()
         }
     }
 

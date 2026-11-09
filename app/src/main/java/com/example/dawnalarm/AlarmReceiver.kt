@@ -37,7 +37,11 @@ class AlarmReceiver : BroadcastReceiver() {
         // With the overlay permission, Android allows this app to start the alarm screen
         // directly, so it appears over other apps and not only as a notification.
         if (Settings.canDrawOverlays(context)) {
-            context.startActivity(alarmScreenIntent(context, alarm, phase))
+            try {
+                context.startActivity(alarmScreenIntent(context, alarm, phase))
+            } catch (e: Exception) {
+                // The full-screen notification posted above still opens the alarm screen.
+            }
         }
     }
 
