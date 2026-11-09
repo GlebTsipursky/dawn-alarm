@@ -126,6 +126,7 @@ class AlarmActivity : ComponentActivity() {
         }
         rampTask = task
         task.run()
+        if (alarm.flashlight) startTorch()
     }
 
     private fun startRinging(alarm: Alarm) {
@@ -136,7 +137,7 @@ class AlarmActivity : ComponentActivity() {
         raiseAlarmVolume()
         playSound()
         if (alarm.vibrate) vibrate()
-        startTorch()
+        if (alarm.flashlight) startTorch()
     }
 
     /**

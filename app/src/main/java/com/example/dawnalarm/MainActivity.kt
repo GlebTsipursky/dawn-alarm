@@ -362,6 +362,7 @@ private fun AlarmEditor(
     var days by remember { mutableStateOf(initial?.days ?: emptySet()) }
     var sunrise by remember { mutableFloatStateOf((initial?.sunriseMinutes ?: 30).toFloat()) }
     var vibrate by remember { mutableStateOf(initial?.vibrate ?: true) }
+    var flashlight by remember { mutableStateOf(initial?.flashlight ?: true) }
 
     Scaffold(
         topBar = { TopAppBar(title = { Text(if (initial == null) "New alarm" else "Edit alarm") }) }
@@ -409,6 +410,14 @@ private fun AlarmEditor(
                 Switch(checked = vibrate, onCheckedChange = { vibrate = it })
             }
 
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "Flashlight (on from the sunrise start, or at alarm time if sunrise is off)",
+                    modifier = Modifier.weight(1f)
+                )
+                Switch(checked = flashlight, onCheckedChange = { flashlight = it })
+            }
+
             Spacer(Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedButton(onClick = onCancel, modifier = Modifier.weight(1f)) {
@@ -421,10 +430,12 @@ private fun AlarmEditor(
                                 id = initial?.id ?: newId,
                                 hour = hour,
                                 minute = minute,
-                                enabled = initial?.enabled ?: true,
+                                // Saving always turns the alarm on, so a changed time rings again.
+                                enabled = true,
                                 days = days,
                                 sunriseMinutes = sunrise.toInt(),
                                 vibrate = vibrate,
+                                flashlight = flashlight,
                             )
                         )
                     },

@@ -25,6 +25,7 @@ data class Alarm(
     val days: Set<DayOfWeek> = emptySet(),
     val sunriseMinutes: Int = 30,
     val vibrate: Boolean = true,
+    val flashlight: Boolean = true,
 ) {
     /** The next time this alarm should ring after [now], or null if it is off. */
     fun nextTrigger(now: ZonedDateTime = ZonedDateTime.now()): ZonedDateTime? {
@@ -58,6 +59,7 @@ data class Alarm(
         .put("days", JSONArray(days.map { it.name }))
         .put("sunriseMinutes", sunriseMinutes)
         .put("vibrate", vibrate)
+        .put("flashlight", flashlight)
 
     companion object {
         fun fromJson(o: JSONObject): Alarm {
@@ -73,6 +75,8 @@ data class Alarm(
                 days = days,
                 sunriseMinutes = o.getInt("sunriseMinutes"),
                 vibrate = o.getBoolean("vibrate"),
+                // Alarms saved before this option existed keep the flashlight on, as before.
+                flashlight = o.optBoolean("flashlight", true),
             )
         }
     }
