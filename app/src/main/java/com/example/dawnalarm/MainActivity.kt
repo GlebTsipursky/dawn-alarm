@@ -8,6 +8,8 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.app.NotificationManager
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.os.PowerManager
 import androidx.core.app.NotificationManagerCompat
@@ -138,6 +140,7 @@ fun AlarmApp() {
             } else {
                 LazyColumn(modifier = Modifier.padding(padding)) {
                     item { PermissionChecklist() }
+                    item { CrashReportCard() }
                     items(alarms, key = { it.id }) { alarm ->
                         AlarmRow(
                             alarm = alarm,
@@ -285,6 +288,42 @@ private fun PermissionChecklist() {
                 "says the app was denied access, use the same Allow restricted settings step first.",
             style = MaterialTheme.typography.bodySmall
         )
+    }
+}
+
+/** Shows the last crash report, if the app closed unexpectedly, so the text can be copied and sent. */
+@Composable
+private fun CrashReportCard() {
+    val context = LocalContext.current
+    var report by remember { mutableStateOf(CrashLog.read(context)) }
+    val current = report ?: return
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text("The app closed unexpectedly last time", style = MaterialTheme.typography.titleMedium)
+        Text(
+            "Copy this report and send it to the person helping you build the app.",
+            style = MaterialTheme.typography.bodySmall
+        )
+        Text(current, style = MaterialTheme.typography.bodySmall)
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Button(onClick = {
+                context.getSystemService(ClipboardManager::class.java)
+                    .setPrimaryClip(ClipData.newPlainText("Dawn Alarm crash report", current))
+            }) {
+                Text("Copy report")
+            }
+            OutlinedButton(onClick = {
+                CrashLog.clear(context)
+                report = null
+            }) {
+                Text("Clear")
+            }
+        }
     }
 }
 
